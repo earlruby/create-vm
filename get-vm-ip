@@ -1,0 +1,38 @@
+#!/bin/bash
+
+#   get-node-ip - Get the IP address of a VM managed by virsh.
+
+#   Copyright 2018 Earl C. Ruby III
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
+usage()
+{
+cat << EOF
+usage: $0 hostname
+
+This script will take a virsh-managed VM hostname and return the IP address.
+EOF
+}
+
+HOSTNAME=$1
+
+if [[ -z $HOSTNAME ]]; then
+    echo "ERROR: Hostname is required"
+    usage
+    exit 1
+fi
+
+MAC=$(virsh domiflist $HOSTNAME | awk '{ print $5 }' | tail -2 | head -1)
+arp -a | grep $MAC | awk '{ print $2 }' | sed 's/[()]//g'
+
