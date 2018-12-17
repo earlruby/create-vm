@@ -164,9 +164,9 @@ ssh ansible@`get-vm-ip node1`
     echo '[hosts]'
     for n in `seq 1 8`; do
         ip=`get-vm-ip node$n`
-        echo "node$n ansible_ip=$ip ansible_user=ansible"
+        echo "node$n ansible_host=$ip ip=$ip ansible_user=ansible"
     done
-) > hosts
+) > hosts.ini
 ```
 
 ### Handy virsh commands

@@ -57,5 +57,7 @@ echo ### is added *after* %post commands are executed, I use the UID:GID
 echo ### as a hack since I know that the first user added will be 1000:1000.
 chown -R 1000:1000 /home/ansible
 chmod 0600 /home/ansible/.ssh/authorized_keys
+# Allow Ansible to sudo w/o a password
+echo "ansible ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ansible
 echo ### Change back to terminal 1
 chvt 1
