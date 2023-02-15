@@ -79,10 +79,10 @@ documentation on for cloud-init.
 
 `create-vm` stores files as follows:
 
-`${HOME}/vms/base/` - Place to store your base Linux cloud images.
-`${HOME}/vms/images/` - `your-vm-name.img` and `your-vm-name-cidata.img` files.
-`${HOME}/vms/init/` - `user-data` and `meta-data`.
-`${HOME}/vms/xml/` - Backup copies of your VMs' XML definition files.
+* `${HOME}/vms/base/` - Place to store your base Linux cloud images.
+* `${HOME}/vms/images/` - `your-vm-name.img` and `your-vm-name-cidata.img` files.
+* `${HOME}/vms/init/` - `user-data` and `meta-data`.
+* `${HOME}/vms/xml/` - Backup copies of your VMs' XML definition files.
 
 QCOW2 filesystems allocate space as needed, so if you create a VM with 100GB of storage, the initial
 size of the `your-vm-name.img` and `your-vm-name-cidata.img` files is only about **700K total**. The
@@ -93,11 +93,9 @@ beyond the disk size that you set when you create the VM.
 
 This repo contains these scripts:
 
-`create-vm` - Use .img and cloud-init files to auto-generate a VM.
-
-`delete-vm` - Delete a virtual machine created with `create-vm`.
-
-`get-vm-ip` - Get the IP address of a VM managed by virsh.
+* `create-vm` - Use .img and cloud-init files to auto-generate a VM.
+* `delete-vm` - Delete a virtual machine created with `create-vm`.
+* `get-vm-ip` - Get the IP address of a VM managed by virsh.
 
 ## Host setup
 
@@ -158,7 +156,10 @@ wget http://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.im
 
 Then create the VM:
 ```
-create-vm -n node1 -i ~/vms/base/jammy-server-cloudimg-amd64.img -k ~/.ssh/id_rsa_ansible.pub -s 40
+create-vm -n node1 \
+    -i ~/vms/base/jammy-server-cloudimg-amd64.img \
+    -k ~/.ssh/id_rsa_ansible.pub \
+    -s 40
 ```
 
 Once created I can get the IP address and ssh to the VM as the user "ansible":
@@ -215,7 +216,7 @@ ansible@node1:~$
 ```
 
 Note that this VM was created with a 40GB hard disk, and the total disk space shown is 40GB,
-but the actual hard drive space initially used by this VM was about 700K. The VM can consume
+but the actual hard drive space _initially used_ by this VM was about 700K. The VM can consume
 up to 40GB, but will only use the space it actually needs.
 
 ### Create 8 Ubuntu 22.04 servers
