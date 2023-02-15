@@ -1,8 +1,8 @@
-#!/bin/bash
+#!/bin/bash -e
 
-#   create-vm - Use .iso and kickstart files to auto-generate a VM.
+#   create-vm - Quickly create guest VMs using cloud image files and cloud-init.
 
-#   Copyright 2018 Earl C. Ruby III
+#   Copyright 2018-2023 Earl C. Ruby III
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -17,56 +17,57 @@
 #   limitations under the License.
 
 HOSTNAME=
-ISO_FQN=
-KS_FQN=
-RAM=1024
+IMG_FQN=
+AUTH_KEYS_FQN=
+RAM=2048
 VCPUS=2
-STORAGE=20
+STORAGE=80
 BRIDGE=virbr0
-MAC="RANDOM"
+MAC=
 VERBOSE=
-DEBUG=
-VM_IMAGE_DIR=/var/lib/libvirt
+VM_IMAGE_DIR="${HOME}/vms"
 
 usage()
 {
 cat << EOF
 usage: $0 options
 
-This script will take an .iso file created by revisor and generate a VM from it.
+Quickly create guest VMs using cloud image files and cloud-init.
 
 OPTIONS:
    -h      Show this message
    -n      Host name (required)
-   -i      Full path and name of the .iso file to use (required)
-   -k      Full path and name of the Kickstart file to use (required)
+   -i      Full path and name of the base .img file to use (required)
+   -k      Full path and name of the ansible user's public key file (required)
    -r      RAM in MB (defaults to ${RAM})
    -c      Number of VCPUs (defaults to ${VCPUS})
    -s      Amount of storage to allocate in GB (defaults to ${STORAGE})
    -b      Bridge interface to use (defaults to ${BRIDGE})
    -m      MAC address to use (default is to use a randomly-generated MAC)
    -v      Verbose
-   -d      Debug mode
 EOF
 }
 
 while getopts "h:n:i:k:r:c:s:b:m:v:d" option; do
     case "${option}"
     in
-        h) 
+        h)
             usage
             exit 0
             ;;
         n) HOSTNAME=${OPTARG};;
-        i) ISO_FQN=${OPTARG};;
-        k) KS_FQN=${OPTARG};;
+        i) IMG_FQN=${OPTARG};;
+        k) AUTH_KEYS_FQN=${OPTARG};;
         r) RAM=${OPTARG};;
         c) VCPUS=${OPTARG};;
         s) STORAGE=${OPTARG};;
         b) BRIDGE=${OPTARG};;
         m) MAC=${OPTARG};;
         v) VERBOSE=1;;
-        d) DEBUG=1;;
+        *)
+            usage
+            exit 1
+            ;;
     esac
 done
 
@@ -76,47 +77,79 @@ if [[ -z $HOSTNAME ]]; then
     exit 1
 fi
 
-if [[ -z $ISO_FQN ]]; then
-    echo "ERROR: ISO file name or http url is required"
+if [[ -z $IMG_FQN ]]; then
+    echo "ERROR: Base cloud image file name is required"
     usage
     exit 1
 fi
 
-if [[ -z $KS_FQN ]]; then
-    echo "ERROR: Kickstart file name or http url is required"
+if [[ -z $AUTH_KEYS_FQN ]]; then
+    echo "ERROR: ansible public key file $AUTH_KEYS_FQN not found"
     usage
     exit 1
 fi
 
-if ! [[ -f $ISO_FQN ]]; then
-    echo "ERROR: $ISO_FQN file not found"
+if ! [[ -f $IMG_FQN ]]; then
+    echo "ERROR: $IMG_FQN file not found"
     usage
     exit 1
 fi
 
-if ! [[ -f $KS_FQN ]]; then
-    echo "ERROR: $KS_FQN file not found"
-    usage
-    exit 1
-fi
-KS_FILE=$(basename "$KS_FQN")
-
-if [[ ! -z $VERBOSE ]]; then
-    echo "Building ${HOSTNAME} using MAC ${MAC} on ${BRIDGE}"
-    echo "======================= $KS_FQN ======================="
-    cat "$KS_FQN"
-    echo "=============================================="
+if [[ -n $VERBOSE ]]; then
+    echo "Building ${HOSTNAME} in $VM_IMAGE_DIR"
     set -xv
 fi
 
-mkdir -p $VM_IMAGE_DIR/{images,xml}
+mkdir -p "$VM_IMAGE_DIR"/{images,xml,init,base}
+
+echo "Creating a qcow2 image file ${VM_IMAGE_DIR}/images/${HOSTNAME}.img that uses the cloud image file ${IMG_FQN} as its base"
+qemu-img create -b "${IMG_FQN}" -f qcow2 -F qcow2 "${VM_IMAGE_DIR}/images/${HOSTNAME}.img" "${STORAGE}G"
+
+echo "Creating meta-data file $VM_IMAGE_DIR/init/meta-data"
+cat > "$VM_IMAGE_DIR/init/meta-data" << EOF
+instance-id: ${HOSTNAME}
+local-hostname: ${HOSTNAME}
+EOF
+
+echo "Creating user-data file $VM_IMAGE_DIR/init/user-data"
+cat > "$VM_IMAGE_DIR/init/user-data" << EOF
+#cloud-config
+
+users:
+  - name: ansible
+    sudo: ["ALL=(ALL) NOPASSWD:ALL"]
+    groups: sudo
+    shell: /bin/bash
+    ssh_authorized_keys:
+EOF
+
+echo "Adding keys from the public key file $AUTH_KEYS_FQN to the user-data file"
+while IFS= read -r key; do
+    echo "      - $key" >> "$VM_IMAGE_DIR/init/user-data"
+done < <(grep -v '^ *#' < "$AUTH_KEYS_FQN")
+
+echo "Generating the cidata ISO file $VM_IMAGE_DIR/images/${HOSTNAME}-cidata.iso"
+(
+    cd "$VM_IMAGE_DIR/init/"
+    genisoimage \
+        -output "$VM_IMAGE_DIR/images/${HOSTNAME}-cidata.img" \
+        -volid cidata \
+        -rational-rock \
+        -joliet \
+        user-data meta-data
+)
+
+MACCMD=
+if [[ -n $MAC ]]; then
+    MACCMD="--mac=${MAC}"
+fi
 
 virt-install \
-    --connect=qemu:///system \
     --name="${HOSTNAME}" \
-    --bridge="${BRIDGE}" \
-    --mac="${MAC}" \
-    --disk="${VM_IMAGE_DIR}/images/${HOSTNAME}.img,bus=virtio,size=${STORAGE}" \
+    --network "bridge=${BRIDGE},model=virtio" $MACCMD \
+    --import \
+    --disk "path=${VM_IMAGE_DIR}/images/${HOSTNAME}.img,format=qcow2" \
+    --disk "path=$VM_IMAGE_DIR/images/${HOSTNAME}-cidata.img,device=cdrom" \
     --ram="${RAM}" \
     --vcpus="${VCPUS}" \
     --autostart \
@@ -124,25 +157,19 @@ virt-install \
     --arch x86_64 \
     --accelerate \
     --check-cpu \
-    --os-type=linux \
+    --osinfo detect=on,require=off \
     --force \
     --watchdog=default \
-    --extra-args="ks=file:/${KS_FILE} console=tty0 console=ttyS0,115200n8 serial" \
-    --initrd-inject="${KS_FQN}" \
-    --graphics=none \
+    --graphics vnc,listen=0.0.0.0 \
     --noautoconsole \
-    --debug \
-    --location="${ISO_FQN}"
-
-if [[ ! -z $DEBUG ]]; then
-    # Connect to the console and watch the install
-    virsh console "${HOSTNAME}"
-    virsh start "${HOSTNAME}"
-fi
+    --debug
 
 # Make a backup of the VM's XML definition file
 virsh dumpxml "${HOSTNAME}" > "${VM_IMAGE_DIR}/xml/${HOSTNAME}.xml"
 
-if [ ! -z $VERBOSE ]; then
+if [ -n $VERBOSE ]; then
     set +xv
 fi
+
+# Show running VMs
+virsh list
