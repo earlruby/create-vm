@@ -2,7 +2,7 @@
 
 #   delete-vm - Delete a virtual machine created with create-vm
 
-#   Copyright 2018 Earl C. Ruby III
+#   Copyright 2018-2023 Earl C. Ruby III
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -17,8 +17,9 @@
 #   limitations under the License.
 
 VM=$1
-VM_IMAGE_DIR=/var/lib/libvirt
-IMAGE="${VM_IMAGE_DIR}/images/$VM.img"
+VM_IMAGE_DIR="${HOME}/vms"
+VM_IMAGE="${VM_IMAGE_DIR}/images/$VM.img"
+CI_IMAGE="${VM_IMAGE_DIR}/images/$VM-cidata.img"
 
 usage()
 {
@@ -32,12 +33,12 @@ if [[ -z $VM ]]; then
     exit 1
 fi
 
-if [[ -e $IMAGE ]]; then
+if [[ -e $VM_IMAGE ]]; then
     # VM exists
     virsh destroy "$VM"
     virsh undefine "$VM"
-    rm -fv "$IMAGE"
+    rm -fv "$VM_IMAGE" "$CI_IMAGE"
 else
-    echo "Cannot find an VM image file named '$IMAGE'. Attempting undefine..."
+    echo "Cannot find an VM image file named '$VM_IMAGE'. Attempting undefine..."
     virsh undefine "$VM"
 fi

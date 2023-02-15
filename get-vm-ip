@@ -2,7 +2,7 @@
 
 #   get-node-ip - Get the IP address of a VM managed by virsh.
 
-#   Copyright 2018 Earl C. Ruby III
+#   Copyright 2018-2023 Earl C. Ruby III
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -35,4 +35,3 @@ fi
 
 MAC=$(virsh domiflist $HOSTNAME | awk '{ print $5 }' | tail -2 | head -1)
 arp -a | grep $MAC | awk '{ print $2 }' | sed 's/[()]//g'
-
