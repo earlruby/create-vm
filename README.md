@@ -122,6 +122,51 @@ to install the necessary virtualization packages:
 
 If you're not using Ansible just `apt-get install` the above packages.
 
+## Permissions
+
+The `libvirtd` daemon runs under the `libvirt-qemu` user service account. The `libvirt-qemu` user
+must be able to read the files in `${HOME}/vms/`. If your ${HOME} directory has permissions set to
+`0x750` then `libvirt-qemu` won't be able to read the `${HOME}/vms/` directory.
+
+You could open up your home directory, e.g.:
+
+```
+chmod 755 ${HOME}
+```
+
+... but that allows anyone logged into your Linux host to read everything in your home directory. A
+better approach is just to add `libvirt-qemu` to your home directory's group. For instance, on my host
+my home directory is `/home/earl` owned by user `earl` and group `earl`, permissions `0x750`:
+
+```
+$ chmod 750 /home/earl
+$ ls -al /home
+total 24
+drwxr-xr-x   6 root      root      4096 Aug 28 21:26 .
+drwxr-xr-x  21 root      root      4096 Aug 28 21:01 ..
+drwxr-x--- 142 earl      earl      4096 Feb 16 09:27 earl
+```
+
+To make sure that _only_ the `libvirt-qemu` user can read my files I can add the user to the `earl` group:
+
+```
+$ sudo usermod --append --groups earl libvirt-qemu
+$ sudo systemctl restart libvirtd
+$ grep libvirt-qemu /etc/group
+earl:x:1000:libvirt-qemu
+libvirt-qemu:x:64055:libvirt-qemu
+```
+
+That shows that the group `earl`, group ID 1000, has a member `libvirt-qemu`. Since the group `earl` has read and execute permissions on my home directory, `libvirt-qemu` has read and execute permissions on my home directory.
+
+Note: The `libvirtd` daemon will chown some of the files in the directory, including the files in the `~/vms/images` directory, to be owned by `libvirt-qemu` group `kvm`. In order to delete these files without sudo, add yourself to the `kvm` group, e.g.:
+
+```
+$ sudo usermod --append --groups kvm earl
+```
+
+You'll need to log out and log in again before the additional group is active.
+
 ## create-vm options
 
 `create-vm` supports the following options:
@@ -272,8 +317,3 @@ which is why I wrote the `get-vm-ip` script.
 
 `virsh net-dhcp-leases $network` - Shows current DHCP leases when virsh is acting as the
 DHCP server. Leases may be shown for machines that no longer exist.
-
-## Known Issues
-
-* The img files must be readable by the `libvirt-qemu` user and it must be in a directory that's
-  readable by the `libvirt-qemu` user.
