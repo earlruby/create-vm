@@ -120,6 +120,7 @@ users:
     sudo: ["ALL=(ALL) NOPASSWD:ALL"]
     groups: sudo
     shell: /bin/bash
+    homedir: /var/ansible
     ssh_authorized_keys:
 EOF
 
