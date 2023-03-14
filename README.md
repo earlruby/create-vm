@@ -4,6 +4,9 @@ Quickly create guest VMs using cloud image files and cloud-init.
 
 ## About
 
+After the latest updates to the code these scripts now create VMs from full
+Linux distros _in a few seconds._
+
 I was looking for a way to automate the creation of VMs for testing various
 distributed system / cluster software packages. I've used Vagrant in the past
 but I wanted something that would:
