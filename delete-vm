@@ -17,7 +17,10 @@
 #   limitations under the License.
 
 VM=$1
-VM_IMAGE_DIR="${HOME}/vms"
+
+# Set VM_IMAGE_DIR environment variable to override default storage location for VMs
+VM_IMAGE_DIR=${VM_IMAGE_DIR:-"${HOME}/vms"}
+
 VM_IMAGE="${VM_IMAGE_DIR}/images/$VM.img"
 CI_IMAGE="${VM_IMAGE_DIR}/images/$VM-cidata.img"
 

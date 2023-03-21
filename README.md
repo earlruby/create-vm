@@ -82,10 +82,11 @@ documentation on for cloud-init.
 
 `create-vm` stores files as follows:
 
-* `${HOME}/vms/base/` - Place to store your base Linux cloud images.
-* `${HOME}/vms/images/` - `your-vm-name.img` and `your-vm-name-cidata.img` files.
-* `${HOME}/vms/init/` - `user-data` and `meta-data`.
-* `${HOME}/vms/xml/` - Backup copies of your VMs' XML definition files.
+* `${VM_IMAGE_DIR}` - Directory used for for VM storage. Defaults to `${HOME}/vms`.
+* `${VM_IMAGE_DIR}/base/` - Place to store your base Linux cloud images.
+* `${VM_IMAGE_DIR}/images/` - `your-vm-name.img` and `your-vm-name-cidata.img` files.
+* `${VM_IMAGE_DIR}/init/` - `user-data` and `meta-data`.
+* `${VM_IMAGE_DIR}/xml/` - Backup copies of your VMs' XML definition files.
 
 QCOW2 filesystems allocate space as needed, so if you create a VM with 100GB of storage, the initial
 size of the `your-vm-name.img` and `your-vm-name-cidata.img` files is only about **700K total**. The
@@ -128,8 +129,8 @@ If you're not using Ansible just `apt-get install` the above packages.
 ## Permissions
 
 The `libvirtd` daemon runs under the `libvirt-qemu` user service account. The `libvirt-qemu` user
-must be able to read the files in `${HOME}/vms/`. If your ${HOME} directory has permissions set to
-`0x750` then `libvirt-qemu` won't be able to read the `${HOME}/vms/` directory.
+must be able to read the files in `${VM_IMAGE_DIR}`. If your ${HOME} directory has permissions set to
+`0x750` then `libvirt-qemu` won't be able to read the `${VM_IMAGE_DIR}` directory.
 
 You could open up your home directory, e.g.:
 
