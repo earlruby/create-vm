@@ -122,6 +122,7 @@ to install the necessary virtualization packages:
     - python3-libvirt
     - virt-manager
     - virtinst
+    - cloud-image-utils
 ```
 
 If you're not using Ansible just `apt-get install` the above packages.
@@ -129,12 +130,12 @@ If you're not using Ansible just `apt-get install` the above packages.
 ## Permissions
 
 The `libvirtd` daemon runs under the `libvirt-qemu` user service account. The `libvirt-qemu` user
-must be able to read the files in `${VM_IMAGE_DIR}`. If your ${HOME} directory has permissions set to
+must be able to read the files in `${VM_IMAGE_DIR}`. If your `${HOME}` directory has permissions set to
 `0x750` then `libvirt-qemu` won't be able to read the `${VM_IMAGE_DIR}` directory.
 
 You could open up your home directory, e.g.:
 
-```
+```sh
 chmod 755 ${HOME}
 ```
 
@@ -142,7 +143,7 @@ chmod 755 ${HOME}
 better approach is just to add `libvirt-qemu` to your home directory's group. For instance, on my host
 my home directory is `/home/earl` owned by user `earl` and group `earl`, permissions `0x750`:
 
-```
+```sh
 $ chmod 750 /home/earl
 $ ls -al /home
 total 24
@@ -153,7 +154,7 @@ drwxr-x--- 142 earl      earl      4096 Feb 16 09:27 earl
 
 To make sure that _only_ the `libvirt-qemu` user can read my files I can add the user to the `earl` group:
 
-```
+```sh
 $ sudo usermod --append --groups earl libvirt-qemu
 $ sudo systemctl restart libvirtd
 $ grep libvirt-qemu /etc/group
@@ -165,7 +166,7 @@ That shows that the group `earl`, group ID 1000, has a member `libvirt-qemu`. Si
 
 Note: The `libvirtd` daemon will chown some of the files in the directory, including the files in the `~/vms/images` directory, to be owned by `libvirt-qemu` group `kvm`. In order to delete these files without sudo, add yourself to the `kvm` group, e.g.:
 
-```
+```sh
 $ sudo usermod --append --groups kvm earl
 ```
 
@@ -186,6 +187,9 @@ OPTIONS:
    -s      Amount of storage to allocate in GB (defaults to 80)
    -b      Bridge interface to use (defaults to virbr0)
    -m      MAC address to use (default is to use a randomly-generated MAC)
+   -t      The hypervisor to install on. Example choices are kvm, qemu, or xen.
+           Example choices are kvm, qemu, or xen. (defaults to kvm)
+           Available options are listed via 'virsh capabilities' in the <domain> tags.
    -v      Verbose
 ```
 
@@ -197,14 +201,14 @@ This creates an Ubuntu 22.04 "Jammy Jellyfish" VM with a 40G hard drive.
 
 First download a copy of the Ubuntu 22.04 "Jammy Jellyfish" cloud image:
 
-```
+```sh
 mkdir -p ~/vms/base
 cd ~/vms/base
 wget http://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img
 ```
 
 Then create the VM:
-```
+```sh
 create-vm -n node1 \
     -i ~/vms/base/jammy-server-cloudimg-amd64.img \
     -k ~/.ssh/id_rsa_ansible.pub \
@@ -321,3 +325,15 @@ which is why I wrote the `get-vm-ip` script.
 
 `virsh net-dhcp-leases $network` - Shows current DHCP leases when virsh is acting as the
 DHCP server. Leases may be shown for machines that no longer exist.
+
+### Other 
+In the case of using the network in the `bridge` mode, the arp table will not possibly contain any IP addresses, use this command instead.
+```sh
+sudo arp-scan --interface br0 --localnet | grep QEMU
+```
+Sample output
+```
+192.168.104.103	52:54:00:1d:4a:0c	QEMU
+192.168.104.118	52:54:00:35:2d:5f	QEMU
+```
+

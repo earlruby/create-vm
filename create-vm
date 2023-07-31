@@ -27,6 +27,7 @@ STORAGE=80
 BRIDGE=virbr0
 MAC=
 VERBOSE=
+VIRT_TYPE=$(command -v kvm-ok > /dev/null && echo kvm || echo qemu)
 
 usage()
 {
@@ -45,6 +46,9 @@ OPTIONS:
    -s      Amount of storage to allocate in GB (defaults to ${STORAGE})
    -b      Bridge interface to use (defaults to ${BRIDGE})
    -m      MAC address to use (default is to use a randomly-generated MAC)
+   -t      The hypervisor to install on. Example choices are kvm, qemu, or xen.
+           Example choices are kvm, qemu, or xen. (defaults to ${VIRT_TYPE})
+           Available options are listed via 'virsh capabilities' in the <domain> tags.
    -v      Verbose
 EOF
 }
@@ -64,6 +68,7 @@ while getopts "h:n:i:k:r:c:s:b:m:v" option; do
         s) STORAGE=${OPTARG};;
         b) BRIDGE=${OPTARG};;
         m) MAC=${OPTARG};;
+        t) VIRT_TYPE=${OPTARG};;
         v) VERBOSE=1;;
         *)
             usage
@@ -130,14 +135,11 @@ while IFS= read -r key; do
     echo "      - $key" >> "$VM_IMAGE_DIR/init/user-data"
 done < <(grep -v '^ *#' < "$AUTH_KEYS_FQN")
 
-echo "Generating the cidata ISO file $VM_IMAGE_DIR/images/${HOSTNAME}-cidata.iso"
+echo "Generating the cidata ISO file $VM_IMAGE_DIR/images/${HOSTNAME}-cidata.img"
 (
     cd "$VM_IMAGE_DIR/init/"
-    genisoimage \
-        -output "$VM_IMAGE_DIR/images/${HOSTNAME}-cidata.img" \
-        -volid cidata \
-        -rational-rock \
-        -joliet \
+    cloud-localds \
+        "$VM_IMAGE_DIR/images/${HOSTNAME}-cidata.img" \
         user-data meta-data
 )
 
@@ -148,6 +150,7 @@ fi
 
 virt-install \
     --name="${HOSTNAME}" \
+    --virt-type=${VIRT_TYPE} \
     --network "bridge=${BRIDGE},model=virtio" $MACCMD \
     --import \
     --disk "path=${VM_IMAGE_DIR}/images/${HOSTNAME}.img,format=qcow2" \
@@ -155,11 +158,8 @@ virt-install \
     --ram="${RAM}" \
     --vcpus="${VCPUS}" \
     --autostart \
-    --hvm \
-    --arch x86_64 \
-    --accelerate \
+    --cpu host \
     --check-cpu \
-    --osinfo detect=on,require=off \
     --force \
     --watchdog=default \
     --graphics vnc,listen=0.0.0.0 \
