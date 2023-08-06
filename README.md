@@ -82,7 +82,7 @@ documentation on for cloud-init.
 
 `create-vm` stores files as follows:
 
-* `${VM_IMAGE_DIR}` - Directory used for for VM storage. Defaults to `${HOME}/vms`.
+* `${VM_IMAGE_DIR}` - Directory used for for VM storage. Defaults to `${HOME}/vms/virsh`.
 * `${VM_IMAGE_DIR}/base/` - Place to store your base Linux cloud images.
 * `${VM_IMAGE_DIR}/images/` - `your-vm-name.img` and `your-vm-name-cidata.img` files.
 * `${VM_IMAGE_DIR}/init/` - `user-data` and `meta-data`.
@@ -163,7 +163,7 @@ libvirt-qemu:x:64055:libvirt-qemu
 
 That shows that the group `earl`, group ID 1000, has a member `libvirt-qemu`. Since the group `earl` has read and execute permissions on my home directory, `libvirt-qemu` has read and execute permissions on my home directory.
 
-Note: The `libvirtd` daemon will chown some of the files in the directory, including the files in the `~/vms/images` directory, to be owned by `libvirt-qemu` group `kvm`. In order to delete these files without sudo, add yourself to the `kvm` group, e.g.:
+Note: The `libvirtd` daemon will chown some of the files in the directory, including the files in the `~/vms/virsh/images` directory, to be owned by `libvirt-qemu` group `kvm`. In order to delete these files without sudo, add yourself to the `kvm` group, e.g.:
 
 ```
 $ sudo usermod --append --groups kvm earl
@@ -198,15 +198,15 @@ This creates an Ubuntu 22.04 "Jammy Jellyfish" VM with a 40G hard drive.
 First download a copy of the Ubuntu 22.04 "Jammy Jellyfish" cloud image:
 
 ```
-mkdir -p ~/vms/base
-cd ~/vms/base
+mkdir -p ~/vms/virsh/base
+cd ~/vms/virsh/base
 wget http://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img
 ```
 
 Then create the VM:
 ```
 create-vm -n node1 \
-    -i ~/vms/base/jammy-server-cloudimg-amd64.img \
+    -i ~/vms/virsh/base/jammy-server-cloudimg-amd64.img \
     -k ~/.ssh/id_rsa_ansible.pub \
     -s 40
 ```
@@ -274,7 +274,7 @@ This starts the VM creation process and exits. Creation of the VMs continues in 
 
 ```
 for n in `seq 1 8`; do
-    create-vm -n node$n -i ~/vms/base/jammy-server-cloudimg-amd64.img -k ~/.ssh/id_rsa_ansible.pub
+    create-vm -n node$n -i ~/vms/virsh/base/jammy-server-cloudimg-amd64.img -k ~/.ssh/id_rsa_ansible.pub
 done
 ```
 
