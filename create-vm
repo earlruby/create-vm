@@ -16,7 +16,7 @@
 #   See the License for the specific language governing permissions and
 
 # Set VM_IMAGE_DIR environment variable to override default storage location for VMs
-VM_IMAGE_DIR=${VM_IMAGE_DIR:-"${HOME}/vms"}
+VM_IMAGE_DIR=${VM_IMAGE_DIR:-"${HOME}/vms/virsh"}
 
 HOSTNAME=
 IMG_FQN=
