@@ -39,9 +39,8 @@ fi
 if [[ -e $VM_IMAGE ]]; then
     # VM exists
     virsh destroy "$VM"
-    virsh undefine "$VM"
-    rm -fv "$VM_IMAGE" "$CI_IMAGE"
+    virsh undefine "$VM" --remove-all-storage
 else
     echo "Cannot find an VM image file named '$VM_IMAGE'. Attempting undefine..."
-    virsh undefine "$VM"
+    virsh undefine "$VM" --remove-all-storage
 fi
